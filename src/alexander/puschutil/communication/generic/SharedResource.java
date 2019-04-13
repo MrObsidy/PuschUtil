@@ -37,6 +37,10 @@ public class SharedResource extends Wrapper<String, Object> {
 	}
 	
 	public Object getObject(){
-		return 	this.getWrapped();
+		return this.getWrapped();
+	}
+	
+	public Class<?> getObjectClass(){
+		return this.getWrapped().getClass();
 	}
 }

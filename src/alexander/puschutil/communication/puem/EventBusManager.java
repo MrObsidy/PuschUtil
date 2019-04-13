@@ -24,11 +24,14 @@
 
 package alexander.puschutil.communication.puem;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashMap;
 
 import alexander.puschutil.communication.generic.SharedResource;
 import alexander.puschutil.communication.puem.api.MethodWrapper;
+import alexander.puschutil.errors.exception.InvalidKeyException;
+import alexander.puschutil.logging.Logger;
 
 /**
  * 
@@ -41,14 +44,39 @@ import alexander.puschutil.communication.puem.api.MethodWrapper;
  * In order for a method to be suited for callback purposes, it has to be like this:
  * </br>
  * callbackMethodName(String sender, SharedResource);
+ * </br>
  * 
+ * Naming convention of the EventBuses: ALLCAPS.
+ * </br>
+ * Pre-defined EventBuses:
+ * </br>
+ * -TICK for Regular ticking purposes. Please bear in mind that you have to provide a TickProvider yourself!
+ * </br>
+ * 
+ * -ERROR for Publishing errors.
  * @author Alexander Pusch
  *
  */
-public final class EventBusManager {
+public class EventBusManager {
 	
 	private static final HashMap<String, EventBus> EVENT_BUSES = new HashMap<String, EventBus>();
-		
+	private static boolean initialized;
+	
+	/**
+	 * Call this at the beginning of the program. It initializes
+	 * 
+	 * @return If this is the first time that this method is called.
+	 */
+	public static boolean initialize(){
+		if(!initialized){
+			EVENT_BUSES.put("TICK", new TickBus());
+			return true;
+		} else {
+			Logger.log("Was already initialized.");
+			return false;
+		}
+	}
+	
 	/**
 	 * 
 	 * Register a Callback function to the Event Bus eventBusName.
@@ -60,13 +88,32 @@ public final class EventBusManager {
 		if(!EVENT_BUSES.containsKey(eventBusName)) {
 			EVENT_BUSES.put(eventBusName, new EventBus());
 		}
-		EVENT_BUSES.get(eventBusName).registerCallbackFunction(wrap);
+		
+		if (eventBusName.equalsIgnoreCase("TICK")) {
+			EVENT_BUSES.get("TICK").registerCallbackFunction(wrap);
+			//This is pointless but I keep it for me to make the code more readable for me
+			//since I have to maintain it, right?
+		} else {
+			EVENT_BUSES.get(eventBusName).registerCallbackFunction(wrap);
+		}
 	}
 	
+	/**
+	 * 
+	 * Unregister a callback Function from the Event Bus eventBusName.
+	 * 
+	 * @param eventBusName  - the bus you want to unregister the Callback from
+	 * @param wrap - the MethodWrapper object that contains the Callback method.
+	 */
 	public static void unregisterCallback(String eventBusName, MethodWrapper wrap){
 		EVENT_BUSES.get(eventBusName).removeCallbackFunction(wrap);
 	}
 	
+	/**
+	 * Gets the names of all currently registered EventBuses.
+	 * 
+	 * @return
+	 */
 	public static ArrayList<String> getAvailableEventBusesName(){
 		ArrayList<String> names = new ArrayList<String>();
 		
@@ -77,12 +124,73 @@ public final class EventBusManager {
 		return names;
 	}
 	
-	
-	public static void relayEvent(String eventBus, String sender, SharedResource res){
+	/**
+	 * 
+	 * Relay an event.
+	 * 
+	 * @param eventBus - the EventBus you want to dispatch the Event to.
+	 * @param sender - the name of the sender (I recommend Object.toString();)
+	 * @param res - the SharedResource containing the Event Data.
+	 * @return
+	 */
+	public static boolean relayEvent(String eventBus, String sender, SharedResource res){
 		if(EVENT_BUSES.containsKey(eventBus)) {
+			//To avoid smartasses push an event to the TickBus even though only one ticker is permitted
+			if (EVENT_BUSES.get(eventBus) instanceof TickBus) return false;
+			
 			EVENT_BUSES.get(eventBus).relayEvent(sender, res);
+			return true;
+			
 		} else {
-			//do noting, no point
+			return false;
+		}
+	}
+	
+	/**
+	 * Send a tick event to all TickBus subscribers. Please bear in mind that to be able to tick
+	 * this, you must be the registered ticker. To become the ticker, see {@link EventBusManager.setTicker()}.
+	 * 
+	 * @param tickerKey - the key you get when you requested to be the ticker.
+	 * @param tickContents - any information you want to relay when ticking
+	 * @return If you have the permission to tick this. (AKA your tickerKey is correct and the tick was relayed).
+	 * @throws IllegalStateException - when you call this before {@link EventBusManager.initialize()}
+	 * @throws InvalidKeyException - when you provide an invalid key
+	 * 
+	 */
+	public static boolean tick(long tickerKey, Object tickContents) throws IllegalStateException, InvalidKeyException {
+		if (EVENT_BUSES.get("TICK") instanceof TickBus) {
+			TickBus tick = (TickBus) EVENT_BUSES.get("TICK");
+			if(tickerKey == tick.getKey()){
+				tick.tick(tickContents);
+				return true;
+			}
+			
+			throw new InvalidKeyException("This key was invalid: " + tickerKey);
+			
+		} else {
+			throw new IllegalStateException("EventBusManager is not initialized yet, still is being called");
+		}
+	}
+	
+	/**
+	 * 
+	 * 
+	 * @param tickerKey
+	 * @param requestTickerChange - the wrapper for the method in your class that gets called whenever setTicker() is invoked to ask for permission to change the ticker (This is so to avoid an unauthorized ticker change). This Method must contain no arguments and return a boolean (true for permission, false for denial,)
+	 * @return the success
+	 * @throws IllegalAccessException - when construction fails
+	 * @throws IllegalArgumentException - when construction fails
+	 * @throws InvocationTargetException - when construction fails
+	 * @throws IllegalStateException - when you call this before {@link EventBusManager.initialize()}
+	 * 
+	 */
+	public static long setTicker(long tickerKey, MethodWrapper requestTickerChange) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException, IllegalStateException {
+		if (EVENT_BUSES.get("TICK") instanceof TickBus){
+			TickBus tick = (TickBus) EVENT_BUSES.get("TICK");
+			tick.setTicker(requestTickerChange);
+			return tick.setTicker(requestTickerChange);
+		} else {
+			throw new IllegalStateException("EventBusManager is not initialized yet, still is being called");
 		}
 	}
 }

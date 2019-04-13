@@ -22,24 +22,17 @@
  *
  */
 
-package alexander.puschutil.logging;
+package alexander.puschutil.errors.exception;
 
-public class Logger {
-	
-	private static String logMode;
-	
-	public static void log(String text){
-		if(logMode.equalsIgnoreCase("console")){
-			System.out.println("[THREAD: " + Thread.currentThread().getName() + "]" + text);
-		}
+public class InvalidKeyException extends Exception {
+
+	public InvalidKeyException(String text){
+		super("This key is invalid:" + text);
 	}
 	
 	/**
-	 * Set the logging mode.
 	 * 
-	 * @param logmode
 	 */
-	public static void setLogMode(String logmode){
-		Logger.logMode = logmode;
-	}
+	private static final long serialVersionUID = -1535887859768923535L;
+	
 }

@@ -137,6 +137,8 @@ public class EventBusManager {
 		if(EVENT_BUSES.containsKey(eventBus)) {
 			//To avoid smartasses push an event to the TickBus even though only one ticker is permitted
 			if (EVENT_BUSES.get(eventBus) instanceof TickBus) return false;
+			//To avoid smartasses push an event to a SecureBus even though you need to be a registered Event sender
+			if (EVENT_BUSES.get(eventBus) instanceof SecureBus) return false;
 			
 			EVENT_BUSES.get(eventBus).relayEvent(sender, res);
 			return true;
@@ -173,24 +175,65 @@ public class EventBusManager {
 	}
 	
 	/**
+	 * Call this method if you wish to become the ticker.
 	 * 
-	 * 
-	 * @param tickerKey
 	 * @param requestTickerChange - the wrapper for the method in your class that gets called whenever setTicker() is invoked to ask for permission to change the ticker (This is so to avoid an unauthorized ticker change). This Method must contain no arguments and return a boolean (true for permission, false for denial,)
-	 * @return the success
+	 * @return The tickerKey that you need in order to call tick() (so don't lose it), if the return value is 0L it means your attempt was denied.
 	 * @throws IllegalAccessException - when construction fails
 	 * @throws IllegalArgumentException - when construction fails
 	 * @throws InvocationTargetException - when construction fails
 	 * @throws IllegalStateException - when you call this before {@link EventBusManager.initialize()}
 	 * 
 	 */
-	public static long setTicker(long tickerKey, MethodWrapper requestTickerChange) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException, IllegalStateException {
+	public static long setTicker(MethodWrapper requestTickerChange) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException, IllegalStateException {
 		if (EVENT_BUSES.get("TICK") instanceof TickBus){
 			TickBus tick = (TickBus) EVENT_BUSES.get("TICK");
-			tick.setTicker(requestTickerChange);
 			return tick.setTicker(requestTickerChange);
 		} else {
 			throw new IllegalStateException("EventBusManager is not initialized yet, still is being called");
+		}
+	}
+	
+	/**
+	 * This method requests adding you to the list of permitted event relayers.
+	 * 
+	 * @param bus - the SecureBus that you want to register to
+	 * @param permissionAsker - the Method that you want to get called back if somebody else wants to be added to the list of relayers.
+	 * @return the Key you need in order to push an event to a secure key.
+	 * @throws IllegalAccessException - when construction fails
+	 * @throws IllegalArgumentException - when construction fails
+	 * @throws InvocationTargetException - when construction fails
+	 */
+	public static long addSecurePusher(String bus, MethodWrapper permissionAsker) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException{
+		if (EVENT_BUSES.get(bus) instanceof SecureBus){
+			SecureBus secbus = (SecureBus) EVENT_BUSES.get(bus);
+			return secbus.addEventPusher(permissionAsker);
+		} else {
+			return 0L;
+		}
+	}
+	
+	/**
+	 * Push an event to the secureBus bus.
+	 * 
+	 * @param sender - 
+	 * @param bus
+	 * @param res
+	 * @param key
+	 * @return
+	 * @throws InvalidKeyException
+	 */
+	public static boolean pushToSecureBus(String sender, String bus, SharedResource res, long key) throws InvalidKeyException {
+		if(EVENT_BUSES.get(bus) instanceof SecureBus){
+			SecureBus secbus = (SecureBus) EVENT_BUSES.get(bus);
+			if(secbus.getKeys().contains(key)){
+				secbus.relayEvent(sender, res);
+				return true;
+			} else {
+				throw new InvalidKeyException("Invalid SecureBus key: " + key);
+			}
+		} else {
+			return false;
 		}
 	}
 }

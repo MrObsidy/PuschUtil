@@ -25,45 +25,52 @@
 package alexander.puschutil.communication.puem;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
 import java.util.Random;
 
-import alexander.puschutil.communication.generic.SharedResource;
 import alexander.puschutil.communication.puem.api.MethodWrapper;
 
-public final class TickBus extends EventBus {
-	private MethodWrapper requestTickerChange;
-	private long key = 0L;
+public final class SecureBus extends EventBus {
 	
-	TickBus(){
-		//don't let anybody instantiate this class other than the EventBusManager
+	private final ArrayList<MethodWrapper> requestAdditionOfEventPusher = new ArrayList<MethodWrapper>();
+	private final ArrayList<Long> keys = new ArrayList<Long>();
+	
+	SecureBus(){
+		//don't let anybody instantiate this class (except the EventBusManager)
 	}
 	
-	void tick(Object tickContent){
-		this.relayEvent("TickBus", new SharedResource("TickContent" , tickContent));
+	ArrayList<Long> getKeys(){
+		return this.keys;
 	}
 	
-	long setTicker(MethodWrapper requestTickerChange) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException{
+	long addEventPusher(MethodWrapper permissionAsker) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException{
 		
 		boolean success = false;
 		
-		if(key != 0L){
-			success = (boolean) this.requestTickerChange.getMethod().invoke(this.requestTickerChange.getObject());
+		if (keys.size() != 0){
+			
+			ArrayList<Boolean> stuff = new ArrayList<Boolean>();
+			
+			for(MethodWrapper wrapper : this.requestAdditionOfEventPusher){
+				stuff.add((Boolean) wrapper.getMethod().invoke(wrapper.getObject()));
+			}
+			
+			if (!stuff.contains(false)) {
+				success = true;
+			}
+			
 		} else {
 			success = true;
 		}
 		
-		if (success) {
-			this.requestTickerChange = requestTickerChange;
+		if(success){
 			long key = (new Random()).nextLong();
 			long key_normalized = (key != 0L) ? key : key + 1L;
-			this.key = key_normalized;
+			keys.add(key_normalized);
+			requestAdditionOfEventPusher.add(permissionAsker);
 			return key_normalized;
 		} else {
 			return 0L;
 		}
-	}
-	
-	long getKey(){
-		return this.key;
 	}
 }

@@ -26,9 +26,9 @@ package alexander.puschutil.communication.puem;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
-import java.util.Random;
 
 import alexander.puschutil.communication.puem.api.MethodWrapper;
+import alexander.puschutil.security.KeyUtil;
 
 public final class SecureBus extends EventBus {
 	
@@ -64,11 +64,10 @@ public final class SecureBus extends EventBus {
 		}
 		
 		if(success){
-			long key = (new Random()).nextLong();
-			long key_normalized = (key != 0L) ? key : key + 1L;
-			keys.add(key_normalized);
+			long key = KeyUtil.generateKey();
+			keys.add(key);
 			requestAdditionOfEventPusher.add(permissionAsker);
-			return key_normalized;
+			return key;
 		} else {
 			return 0L;
 		}

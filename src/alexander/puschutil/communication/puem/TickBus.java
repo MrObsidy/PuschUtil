@@ -25,10 +25,10 @@
 package alexander.puschutil.communication.puem;
 
 import java.lang.reflect.InvocationTargetException;
-import java.util.Random;
 
 import alexander.puschutil.communication.generic.SharedResource;
 import alexander.puschutil.communication.puem.api.MethodWrapper;
+import alexander.puschutil.security.KeyUtil;
 
 public final class TickBus extends EventBus {
 	private MethodWrapper requestTickerChange;
@@ -54,10 +54,9 @@ public final class TickBus extends EventBus {
 		
 		if (success) {
 			this.requestTickerChange = requestTickerChange;
-			long key = (new Random()).nextLong();
-			long key_normalized = (key != 0L) ? key : key + 1L;
-			this.key = key_normalized;
-			return key_normalized;
+			long key = KeyUtil.generateKey();
+			this.key = key;
+			return key;
 		} else {
 			return 0L;
 		}

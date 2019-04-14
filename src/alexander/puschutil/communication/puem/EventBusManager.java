@@ -70,9 +70,10 @@ public class EventBusManager {
 	public static boolean initialize(){
 		if(!initialized){
 			EVENT_BUSES.put("TICK", new TickBus());
+			EVENT_BUSES.put("ERROR", new EventBus());
 			return true;
 		} else {
-			Logger.log("Was already initialized.");
+			Logger.log("EventBusManager was already initialized.");
 			return false;
 		}
 	}
@@ -216,12 +217,12 @@ public class EventBusManager {
 	/**
 	 * Push an event to the secureBus bus.
 	 * 
-	 * @param sender - 
-	 * @param bus
-	 * @param res
-	 * @param key
-	 * @return
-	 * @throws InvalidKeyException
+	 * @param sender - the name of the Sender
+	 * @param bus - the name of the bus you want to push to
+	 * @param res - the resource that contains the event info
+	 * @param key - your key to log in as a securebus pusher
+	 * @return success
+	 * @throws InvalidKeyException - when your key is wrong
 	 */
 	public static boolean pushToSecureBus(String sender, String bus, SharedResource res, long key) throws InvalidKeyException {
 		if(EVENT_BUSES.get(bus) instanceof SecureBus){
